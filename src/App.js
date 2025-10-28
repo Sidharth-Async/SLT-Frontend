@@ -1,31 +1,27 @@
 import React, { useState } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
 import HomePage from './components/HomePage';
 import Dashboard from './components/Dashboard';
+import LogActivity from './components/LogActivity';
 
 const theme = createTheme({
     palette: {
-        primary: {
-            main: '#16a34a', // green-600
-        },
-        secondary: {
-            main: '#2563eb', // blue-600
-        },
-        error: {
-            main: '#dc2626', // red-600
-        },
+        primary: { main: '#16a34a' },   // green-600
+        secondary: { main: '#2563eb' }, // blue-600
+        error: { main: '#dc2626' }      // red-600
     },
 });
 
-const App = () => {
-    const [currentView, setCurrentView] = useState('home');
+const AppContent = () => {
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [authMode, setAuthMode] = useState('login');
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const navigate = useNavigate();
 
     // API Base URL - Update this to your backend URL
     const API_BASE_URL = 'http://localhost:8080/api/auth';
@@ -41,10 +37,13 @@ const App = () => {
             if (response.ok) {
                 const data = await response.json();
                 sessionStorage.setItem('token', data.token);
-                sessionStorage.setItem('username', data.displayUsername || data.username || loginData.email.split('@')[0]); // Store username
+                sessionStorage.setItem(
+                    'username',
+                    data.displayUsername || data.username || loginData.email.split('@')[0]
+                );
                 setIsLoggedIn(true);
                 setShowAuthModal(false);
-                setCurrentView('dashboard');
+                navigate('/dashboard');
             } else {
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.includes('application/json')) {
@@ -56,7 +55,6 @@ const App = () => {
                 }
             }
         } catch (err) {
-            // Only show error, don't auto-login
             throw new Error(err.message || 'Login failed. Please check your credentials.');
         }
     };
@@ -77,10 +75,13 @@ const App = () => {
             if (response.ok) {
                 const data = await response.json();
                 sessionStorage.setItem('token', data.token);
-                sessionStorage.setItem('username', data.displayUsername || data.username || signupData.username); // Store username
+                sessionStorage.setItem(
+                    'username',
+                    data.displayUsername || data.username || signupData.username
+                );
                 setIsLoggedIn(true);
                 setShowAuthModal(false);
-                setCurrentView('dashboard');
+                navigate('/dashboard');
             } else {
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.includes('application/json')) {
@@ -99,7 +100,7 @@ const App = () => {
     const handleLogout = () => {
         sessionStorage.removeItem('token');
         setIsLoggedIn(false);
-        setCurrentView('home');
+        navigate('/');
     };
 
     const handleShowAuth = (mode) => {
@@ -107,47 +108,50 @@ const App = () => {
         setShowAuthModal(true);
     };
 
-    const handleNavigate = (view) => {
-        setCurrentView(view);
-    };
-
     const handleAuthModeChange = () => {
         setAuthMode(authMode === 'login' ? 'signup' : 'login');
     };
 
     return (
-        <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-                <Header
-                    isLoggedIn={isLoggedIn}
-                    onShowAuth={handleShowAuth}
-                    onLogout={handleLogout}
-                    onNavigate={handleNavigate}
+        <>
+            <Header
+                isLoggedIn={isLoggedIn}
+                onShowAuth={handleShowAuth}
+                onLogout={handleLogout}
+            />
+
+            <main style={{ flexGrow: 1 }}>
+                <Routes>
+                    <Route path="/" element={<HomePage onShowAuth={handleShowAuth} />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/log-activity" element={<LogActivity />} />
+                </Routes>
+            </main>
+
+            <Footer />
+
+            {showAuthModal && (
+                <AuthModal
+                    mode={authMode}
+                    onClose={() => setShowAuthModal(false)}
+                    onModeChange={handleAuthModeChange}
+                    onLogin={handleLogin}
+                    onSignup={handleSignup}
                 />
-
-                <main style={{ flexGrow: 1 }}>
-                    {currentView === 'home' ? (
-                        <HomePage onShowAuth={handleShowAuth} />
-                    ) : (
-                        <Dashboard />
-                    )}
-                </main>
-
-                <Footer />
-
-                {showAuthModal && (
-                    <AuthModal
-                        mode={authMode}
-                        onClose={() => setShowAuthModal(false)}
-                        onModeChange={handleAuthModeChange}
-                        onLogin={handleLogin}
-                        onSignup={handleSignup}
-                    />
-                )}
-            </div>
-        </ThemeProvider>
+            )}
+        </>
     );
 };
+
+const App = () => (
+    <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Router>
+            <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+                <AppContent />
+            </div>
+        </Router>
+    </ThemeProvider>
+);
 
 export default App;
